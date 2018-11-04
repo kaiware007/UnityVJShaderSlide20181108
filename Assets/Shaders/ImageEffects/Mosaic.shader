@@ -1,0 +1,63 @@
+﻿Shader "Hidden/Mosaic"
+{
+	Properties
+	{
+		_MainTex ("Texture", 2D) = "white" {}
+		_MosaicScale("Mosaic Scale", float) = 1
+		[Toggle(CIRCLE)]_Circle("Circle", Float) = 1
+	}
+	SubShader
+	{
+		// No culling or depth
+		Cull Off ZWrite Off ZTest Always
+
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag
+			#pragma multi_compile _ CIRCLE
+
+			#include "UnityCG.cginc"
+
+			struct appdata
+			{
+				float4 vertex : POSITION;
+				float2 uv : TEXCOORD0;
+			};
+
+			struct v2f
+			{
+				float2 uv : TEXCOORD0;
+				float4 vertex : SV_POSITION;
+			};
+
+			sampler2D _MainTex;
+			float _MosaicScale;
+			float4 _MainTex_TexelSize;
+
+			v2f vert (appdata v)
+			{
+				v2f o;
+				o.vertex = UnityObjectToClipPos(v.vertex);
+				o.uv = v.uv;
+
+				return o;
+			}
+			
+			fixed4 frag (v2f i) : SV_Target
+			{
+				float2 delta = saturate(_MosaicScale / _ScreenParams.xy);
+				float2 uv = (floor(i.uv / delta) + 0.5) * delta;
+				fixed4 col = tex2D(_MainTex, uv);
+#ifdef CIRCLE
+				float2 uv2 = frac(i.uv / delta);
+				float len = 0.5 - length(uv2 - 0.5);
+				col = col * smoothstep(0.0, 0.05, len);
+#endif
+				return col;
+			}
+			ENDCG
+		}
+	}
+}
